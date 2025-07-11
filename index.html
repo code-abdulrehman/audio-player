@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Player with Frequency Bars</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .audio-bar {
+            transition: height 0.1s ease;
+            background: linear-gradient(to top, #112f54, #332160, #43e97b);
+        }
+        
+        .audio-bar.active {
+            background: linear-gradient(to top, #ff6b6b, #ff8e8e, #ffa8a8);
+        }
+        
+        .upload-zone {
+            border: 2px dashed #cbd5e1;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-zone:hover {
+            border-color: #1db954;
+            background-color: rgba(29, 185, 84, 0.05);
+        }
+        
+        .upload-zone.dragover {
+            border-color: #1db954;
+            background-color: rgba(29, 185, 84, 0.1);
+        }
+        
+        .audio-controls {
+            backdrop-filter: blur(10px);
+            background: rgba(0, 0, 0, 0.8);
+        }
+        
+        .progress-bar {
+            background: linear-gradient(to right, #1db954, #1ed760);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto">
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-bold mb-2 bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent">
+                    Audio Player
+                </h1>
+                <p class="text-gray-400">Upload and visualize your audio files</p>
+            </div>
+
+            <!-- Upload Zone -->
+            <div id="uploadZone" class="upload-zone rounded-lg p-8 mb-8 text-center cursor-pointer">
+                <div class="mb-4">
+                    <svg class="w-12 h-12 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                </div>
+                <p class="text-lg mb-2">Drop your audio file here</p>
+                <p class="text-gray-400 mb-4">or click to browse</p>
+                <input type="file" id="fileInput" accept="audio/*" class="hidden">
+                <button id="browseBtn" class="bg-green-500 hover:bg-green-600 px-6 py-2 rounded-lg transition-colors">
+                    Browse Files
+                </button>
+            </div>
+
+            <!-- Audio Player Container -->
+            <div id="playerContainer" class="hidden">
+                <!-- Track Info -->
+                <div class="bg-gray-800 rounded-lg p-6 mb-6">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-16 h-16 bg-gradient-to-br from-green-400 to-blue-500 rounded-lg flex items-center justify-center">
+                            <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 id="trackName" class="text-xl font-semibold">Audio Track</h3>
+                            <p id="trackDuration" class="text-gray-400">0:00</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Audio Visualization -->
+                <div class="bg-gray-800 rounded-lg p-6 mb-6">
+                    <div class="flex items-center justify-center space-x-1 h-32" id="audioVisualization">
+                        <!-- Audio bars will be generated here -->
+                    </div>
+                </div>
+
+                <!-- Audio Controls -->
+                <div class="audio-controls rounded-lg p-6 sticky bottom-4">
+                    <div class="flex items-center space-x-4">
+                        <!-- Play/Pause Button -->
+                        <button id="playPauseBtn" class="bg-green-500 hover:bg-green-600 rounded-full p-3 transition-colors">
+                            <svg id="playIcon" class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                            <svg id="pauseIcon" class="w-6 h-6 text-white hidden" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                            </svg>
+                        </button>
+
+                        <!-- Progress Bar -->
+                        <div class="flex-1 space-y-2">
+                            <div class="flex justify-between text-sm text-gray-400">
+                                <span id="currentTime">0:00</span>
+                                <span id="totalTime">0:00</span>
+                            </div>
+                            <div class="w-full bg-gray-600 rounded-full h-2 cursor-pointer" id="progressContainer">
+                                <div class="progress-bar h-2 rounded-full" id="progressBar" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Volume Control -->
+                        <div class="flex items-center space-x-2">
+                            <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+                            </svg>
+                            <input type="range" id="volumeSlider" min="0" max="100" value="50" class="w-20 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hidden Audio Element -->
+            <audio id="audioPlayer" preload="metadata"></audio>
+        </div>
+    </div>
+
+    <script>
+        class AudioPlayerApp {
+            constructor() {
+                this.audioPlayer = document.getElementById('audioPlayer');
+                this.fileInput = document.getElementById('fileInput');
+                this.uploadZone = document.getElementById('uploadZone');
+                this.playerContainer = document.getElementById('playerContainer');
+                this.playPauseBtn = document.getElementById('playPauseBtn');
+                this.playIcon = document.getElementById('playIcon');
+                this.pauseIcon = document.getElementById('pauseIcon');
+                this.progressContainer = document.getElementById('progressContainer');
+                this.progressBar = document.getElementById('progressBar');
+                this.currentTimeDisplay = document.getElementById('currentTime');
+                this.totalTimeDisplay = document.getElementById('totalTime');
+                this.volumeSlider = document.getElementById('volumeSlider');
+                this.trackName = document.getElementById('trackName');
+                this.trackDuration = document.getElementById('trackDuration');
+                this.audioVisualization = document.getElementById('audioVisualization');
+                
+                this.isPlaying = false;
+                this.audioContext = null;
+                this.analyser = null;
+                this.audioSource = null;
+                this.animationId = null;
+                this.audioBars = [];
+                
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.createAudioBars();
+                this.setupAudioContext();
+            }
+
+            setupEventListeners() {
+                // File upload
+                this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+                document.getElementById('browseBtn').addEventListener('click', () => this.fileInput.click());
+                
+                // Drag and drop
+                this.uploadZone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    this.uploadZone.classList.add('dragover');
+                });
+                
+                this.uploadZone.addEventListener('dragleave', () => {
+                    this.uploadZone.classList.remove('dragover');
+                });
+                
+                this.uploadZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    this.uploadZone.classList.remove('dragover');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        this.handleFileSelect({ target: { files } });
+                    }
+                });
+                
+                this.uploadZone.addEventListener('click', () => this.fileInput.click());
+
+                // Audio controls
+                this.playPauseBtn.addEventListener('click', () => this.togglePlayPause());
+                this.audioPlayer.addEventListener('loadedmetadata', () => this.updateTrackInfo());
+                this.audioPlayer.addEventListener('timeupdate', () => this.updateProgress());
+                this.audioPlayer.addEventListener('ended', () => this.handleAudioEnd());
+                
+                // Progress bar
+                this.progressContainer.addEventListener('click', (e) => this.seekTo(e));
+                
+                // Volume control
+                this.volumeSlider.addEventListener('input', (e) => {
+                    this.audioPlayer.volume = e.target.value / 100;
+                });
+            }
+
+            handleFileSelect(e) {
+                const file = e.target.files[0];
+                if (file && file.type.startsWith('audio/')) {
+                    const url = URL.createObjectURL(file);
+                    this.audioPlayer.src = url;
+                    this.trackName.textContent = file.name;
+                    this.playerContainer.classList.remove('hidden');
+                    this.setupAudioForVisualization();
+                }
+            }
+
+            setupAudioContext() {
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    console.warn('Web Audio API not supported');
+                }
+            }
+
+            setupAudioForVisualization() {
+                if (this.audioContext) {
+                    this.audioSource = this.audioContext.createMediaElementSource(this.audioPlayer);
+                    this.analyser = this.audioContext.createAnalyser();
+                    this.analyser.fftSize = 256;
+                    this.audioSource.connect(this.analyser);
+                    this.analyser.connect(this.audioContext.destination);
+                }
+            }
+
+            createAudioBars() {
+                const barCount = 50;
+                this.audioVisualization.innerHTML = '';
+                this.audioBars = [];
+                
+                for (let i = 0; i < barCount; i++) {
+                    const bar = document.createElement('div');
+                    bar.className = 'audio-bar w-1 bg-gray-600 rounded';
+                    bar.style.height = '4px';
+                    this.audioVisualization.appendChild(bar);
+                    this.audioBars.push(bar);
+                }
+            }
+
+            updateVisualization() {
+                if (!this.analyser) return;
+                
+                const bufferLength = this.analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+                this.analyser.getByteFrequencyData(dataArray);
+                
+                const barCount = this.audioBars.length;
+                const step = Math.floor(bufferLength / barCount);
+                
+                for (let i = 0; i < barCount; i++) {
+                    const value = dataArray[i * step];
+                    const height = Math.max(4, (value / 255) * 120);
+                    this.audioBars[i].style.height = `${height}px`;
+                    
+                    if (this.isPlaying) {
+                        this.audioBars[i].classList.add('active');
+                    } else {
+                        this.audioBars[i].classList.remove('active');
+                    }
+                }
+                
+                if (this.isPlaying) {
+                    this.animationId = requestAnimationFrame(() => this.updateVisualization());
+                }
+            }
+
+            togglePlayPause() {
+                if (this.audioContext && this.audioContext.state === 'suspended') {
+                    this.audioContext.resume();
+                }
+                
+                if (this.isPlaying) {
+                    this.audioPlayer.pause();
+                    this.isPlaying = false;
+                    this.playIcon.classList.remove('hidden');
+                    this.pauseIcon.classList.add('hidden');
+                    if (this.animationId) {
+                        cancelAnimationFrame(this.animationId);
+                    }
+                } else {
+                    this.audioPlayer.play();
+                    this.isPlaying = true;
+                    this.playIcon.classList.add('hidden');
+                    this.pauseIcon.classList.remove('hidden');
+                    this.updateVisualization();
+                }
+            }
+
+            updateTrackInfo() {
+                const duration = this.audioPlayer.duration;
+                this.totalTimeDisplay.textContent = this.formatTime(duration);
+                this.trackDuration.textContent = this.formatTime(duration);
+            }
+
+            updateProgress() {
+                const currentTime = this.audioPlayer.currentTime;
+                const duration = this.audioPlayer.duration;
+                const progress = (currentTime / duration) * 100;
+                
+                this.progressBar.style.width = `${progress}%`;
+                this.currentTimeDisplay.textContent = this.formatTime(currentTime);
+            }
+
+            seekTo(e) {
+                const rect = this.progressContainer.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const width = rect.width;
+                const percentage = clickX / width;
+                const newTime = percentage * this.audioPlayer.duration;
+                this.audioPlayer.currentTime = newTime;
+            }
+
+            handleAudioEnd() {
+                this.isPlaying = false;
+                this.playIcon.classList.remove('hidden');
+                this.pauseIcon.classList.add('hidden');
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                }
+                
+                // Reset bars
+                this.audioBars.forEach(bar => {
+                    bar.style.height = '4px';
+                    bar.classList.remove('active');
+                });
+            }
+
+            formatTime(seconds) {
+                if (isNaN(seconds)) return '0:00';
+                const minutes = Math.floor(seconds / 60);
+                const remainingSeconds = Math.floor(seconds % 60);
+                return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+            }
+        }
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', () => {
+            new AudioPlayerApp();
+        });
+    </script>
+</body>
+</html>
